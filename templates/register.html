@@ -58,6 +58,8 @@
       #video {
         width: 320px;
         height: 240px;
+        display: block;
+        transform: scaleX(-1); /* selfie view */
       }
 
       #overlay {
@@ -131,6 +133,7 @@
       <div class="button-container">
         <input type="text" id="name" placeholder="Enter your name" />
         <button id="startBtn">Start Registration</button>
+        <button style="margin-top: 7px" id="backBtn">Face Recognition</button>
       </div>
     </div>
 
@@ -140,6 +143,7 @@
       const ctx = overlay.getContext("2d");
       const nameInput = document.getElementById("name");
       const startBtn = document.getElementById("startBtn");
+      const backBtn = document.getElementById("backBtn");
       const status = document.getElementById("status");
       const socket = io();
 
@@ -182,20 +186,22 @@
           const scaleY = overlay.height / video.videoHeight;
 
           data.faces.forEach((f) => {
-            const x = f.x * scaleX;
+            // Flip X for mirrored video
+            const x = overlay.width - (f.x + f.w) * scaleX;
             const y = f.y * scaleY;
             const w = f.w * scaleX;
             const h = f.h * scaleY;
 
+            // Draw bounding box
             ctx.strokeStyle = "blue";
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y, w, h);
 
-            ctx.fillStyle = "rgba(0,0,255,0.3)";
+            // Draw label
             const label = currentName || "Face";
             const textWidth = ctx.measureText(label).width;
+            ctx.fillStyle = "rgba(0,0,255,0.3)";
             ctx.fillRect(x, y - 20, textWidth + 6, 18);
-
             ctx.fillStyle = "white";
             ctx.font = "16px Arial";
             ctx.fillText(label, x + 3, y - 5);
@@ -238,6 +244,9 @@
       }
 
       startBtn.addEventListener("click", registerFace);
+      backBtn.addEventListener("click", () => {
+        window.location.href = "/"; // Back to main recognition page
+      });
     </script>
   </body>
 </html>

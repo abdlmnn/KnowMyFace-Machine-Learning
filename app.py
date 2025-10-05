@@ -85,7 +85,7 @@ def register_face():
                 saved_count += 1
 
         except Exception as e:
-            print(f"⚠️ Registration error: {e}")
+            print(f"Registration error: {e}")
         idx += 1
 
     if saved_count < 5:
@@ -103,7 +103,7 @@ def register_face():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": f"✅ Registered {name} with {saved_count} faces"})
+    return jsonify({"message": f"Registered {name} with {saved_count} faces"})
 
 # ----------------- Recognition -----------------
 def recognize_face(frame, threshold=0.32):
