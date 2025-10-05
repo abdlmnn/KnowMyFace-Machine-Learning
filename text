@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live ORB Face Recognition</title>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial;
+        text-align: center;
+        margin-top: 20px;
+      }
+      #video {
+        border: 2px solid black;
+        width: 320px;
+        height: 240px;
+      }
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 320px;
+        height: 240px;
+      }
+      .video-container {
+        position: relative;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Live ORB Face Recognition</h2>
+    <div class="video-container">
+      <video id="video" autoplay></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <script>
+      const video = document.getElementById("video");
+      const overlay = document.getElementById("overlay");
+      const ctx = overlay.getContext("2d");
+      const socket = io();
+
+      // Get camera
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 320, height: 240 } })
+        .then((stream) => (video.srcObject = stream))
+        .catch((err) => console.error(err));
+
+      // Adjust canvas to video size
+      video.addEventListener("loadedmetadata", () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+      });
+
+      // Capture a single frame
+      function captureFrame() {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg");
+      }
+
+      // Send frames to server every 100ms
+      setInterval(() => {
+        if (video.videoWidth && video.videoHeight) {
+          socket.emit("frame", { image: captureFrame() });
+        }
+      }, 100);
+
+      // Receive detected faces from server
+      socket.on("faces", (data) => {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        if (data.faces) {
+          const scaleX = overlay.width / video.videoWidth;
+          const scaleY = overlay.height / video.videoHeight;
+
+          data.faces.forEach((f) => {
+            const x = f.x * scaleX;
+            const y = f.y * scaleY;
+            const w = f.w * scaleX;
+            const h = f.h * scaleY;
+
+            // Draw bounding box
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+
+            // Draw background box for name
+            ctx.fillStyle = "rgba(0,255,0,0.3)";
+            const textWidth = ctx.measureText(f.name).width;
+            ctx.fillRect(x, y - 20, textWidth + 6, 18);
+
+            // Draw name
+            ctx.fillStyle = "black";
+            ctx.font = "16px Arial";
+            ctx.fillText(f.name, x + 3, y - 5);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

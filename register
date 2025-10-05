@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Register Face</title>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial;
+        text-align: center;
+        margin-top: 20px;
+      }
+      #video {
+        border: 2px solid black;
+        width: 320px;
+        height: 240px;
+      }
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 320px;
+        height: 240px;
+      }
+      .video-container {
+        position: relative;
+        display: inline-block;
+      }
+      #status {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Register New Face</h2>
+    <input type="text" id="name" placeholder="Enter your name" />
+    <button id="startBtn">Start Registration</button>
+
+    <div class="video-container">
+      <video id="video" autoplay></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div id="status"></div>
+
+    <script>
+      const video = document.getElementById("video");
+      const overlay = document.getElementById("overlay");
+      const ctx = overlay.getContext("2d");
+      const nameInput = document.getElementById("name");
+      const startBtn = document.getElementById("startBtn");
+      const status = document.getElementById("status");
+      const socket = io();
+
+      let snapshots = [];
+      let currentName = "";
+
+      // Get camera
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 320, height: 240 } })
+        .then((stream) => (video.srcObject = stream))
+        .catch((err) => console.error(err));
+
+      // Adjust canvas to video size
+      video.addEventListener("loadedmetadata", () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+      });
+
+      // Capture a frame
+      function captureFrame() {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg");
+      }
+
+      // Draw live bounding box and name
+      setInterval(() => {
+        if (video.videoWidth && video.videoHeight) {
+          socket.emit("frame", { image: captureFrame() });
+        }
+      }, 100);
+
+      socket.on("faces", (data) => {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        if (data.faces) {
+          const scaleX = overlay.width / video.videoWidth;
+          const scaleY = overlay.height / video.videoHeight;
+
+          data.faces.forEach((f) => {
+            const x = f.x * scaleX;
+            const y = f.y * scaleY;
+            const w = f.w * scaleX;
+            const h = f.h * scaleY;
+
+            // Draw bounding box
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+
+            // Draw name above box
+            ctx.fillStyle = "rgba(0,255,0,0.3)";
+            const textWidth = ctx.measureText(currentName || "Face").width;
+            ctx.fillRect(x, y - 20, textWidth + 6, 18);
+
+            ctx.fillStyle = "black";
+            ctx.font = "16px Arial";
+            ctx.fillText(currentName || "Face", x + 3, y - 5);
+          });
+        }
+      });
+
+      // Register face
+      async function registerFace() {
+        const name = nameInput.value.trim();
+        if (!name) {
+          alert("Please enter your name!");
+          return;
+        }
+        currentName = name;
+
+        snapshots = [];
+        status.textContent = "Capturing 10 snapshots...";
+
+        // Capture 10 snapshots
+        for (let i = 0; i < 10; i++) {
+          snapshots.push(captureFrame());
+          status.textContent = `Captured ${i + 1}/10 snapshots...`;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        status.textContent = "🚀 Sending snapshots to server...";
+        fetch("/register_face", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, images: snapshots }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            status.textContent = data.message;
+          })
+          .catch((err) => {
+            console.error(err);
+            status.textContent = "Error registering face";
+          });
+      }
+
+      startBtn.addEventListener("click", registerFace);
+    </script>
+  </body>
+</html>

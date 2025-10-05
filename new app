@@ -1,0 +1,200 @@
+import os
+import cv2
+import sqlite3
+import numpy as np
+import io
+import base64
+import pickle
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
+from PIL import Image
+from scipy.spatial.distance import cosine
+
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# ----------------- Database -----------------
+DB_PATH = "test.db"
+
+def get_db_connection():
+    return sqlite3.connect(DB_PATH)
+
+# Create embeddings table
+conn = get_db_connection()
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS faces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    embedding BLOB NOT NULL
+)
+""")
+conn.commit()
+conn.close()
+
+# ----------------- Haar Cascade -----------------
+face_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
+
+# ----------------- ORB Helper -----------------
+orb = cv2.ORB_create()
+
+def compute_embedding(face_img):
+    """Compute ORB-based embedding (average descriptor vector)."""
+    gray_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+    kp, des = orb.detectAndCompute(gray_face, None)
+    if des is None or len(kp) == 0:
+        return None
+    emb = np.mean(des, axis=0)
+    return emb / np.linalg.norm(emb)
+
+# ----------------- Registration -----------------
+@app.route("/register_face", methods=["POST"])
+def register_face():
+    data = request.get_json()
+    name = data.get("name")
+    images = data.get("images")
+
+    if not name or not images:
+        return jsonify({"message": "Name and images required"}), 400
+
+    embeddings = []
+    saved_count = 0
+    idx = 0
+
+    while saved_count < 5 and idx < len(images):
+        try:
+            img_str = images[idx].split(",")[1]
+            img_bytes = base64.b64decode(img_str)
+            img = Image.open(io.BytesIO(img_bytes))
+            frame = np.array(img.convert("RGB"))
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
+            if len(faces) == 0:
+                idx += 1
+                continue
+
+            x, y, w, h = faces[0]
+            face_crop = frame[y:y + h, x:x + w]
+
+            embedding = compute_embedding(face_crop)
+            if embedding is not None:
+                embeddings.append(embedding)
+                saved_count += 1
+
+        except Exception as e:
+            print(f"⚠️ Registration error: {e}")
+        idx += 1
+
+    if saved_count < 5:
+        return jsonify({"message": f"Only {saved_count}/5 faces saved. Try again"}), 400
+
+    # Average embedding across samples
+    final_emb = np.mean(embeddings, axis=0)
+
+    # Save only one embedding per user (overwrite if exists)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM faces WHERE name=?", (name,))
+    cursor.execute(
+        "INSERT INTO faces (name, embedding) VALUES (?, ?)",
+        (name, pickle.dumps(final_emb)),
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": f"✅ Registered {name} with {saved_count} faces"})
+
+# ----------------- Recognition -----------------
+def recognize_face(frame, threshold=0.38):
+    """Recognize faces in a frame using ORB embeddings and cosine similarity."""
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(100, 100))
+    results = []
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, embedding FROM faces")
+    rows = cursor.fetchall()
+    conn.close()
+
+    db_faces = {stored_name: pickle.loads(stored_emb) for stored_name, stored_emb in rows}
+
+    for (x, y, w, h) in faces:
+        face_crop = frame[y:y + h, x:x + w]
+        emb1 = compute_embedding(face_crop)
+
+        if emb1 is None:
+            results.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "name": "Unknown"})
+            continue
+
+        recognized_name = "Unknown"
+        min_dist = 1.0
+
+        for name, emb2 in db_faces.items():
+            dist = cosine(emb1, emb2)
+            if dist < threshold and dist < min_dist:
+                min_dist = dist
+                recognized_name = name
+
+        results.append({"x": int(x), "y": int(y), "w": int(w), "h": int(h), "name": recognized_name})
+
+    return results
+STABLE_FRAMES = 3
+previous_names = {}
+
+@socketio.on("frame")
+def handle_frame(data):
+    img_data = data.get("image")
+    if not img_data:
+        emit("faces", {"faces": []})
+        return
+
+    try:
+        img_str = img_data.split(",")[1]
+        img_bytes = base64.b64decode(img_str)
+        img = Image.open(io.BytesIO(img_bytes))
+        frame = np.array(img.convert("RGB"))
+
+        results = recognize_face(frame)
+
+        smoothed = []
+        updated_prev = {}
+
+        for idx, f in enumerate(results):
+            prev = previous_names.get(idx, {"name": f["name"], "count": 0})
+
+            if f["name"] == prev["name"]:
+                prev["count"] += 1
+            else:
+                prev["name"] = f["name"]
+                prev["count"] = 0
+
+            # Confirm only after stable frames
+            stable_name = f["name"] if prev["count"] >= STABLE_FRAMES else "Unknown"
+            smoothed.append({**f, "name": stable_name})
+            updated_prev[idx] = prev
+
+        previous_names.clear()
+        previous_names.update(updated_prev)
+
+        emit("faces", {"faces": smoothed})
+
+    except Exception as e:
+        print(f"⚠️ Live recognition error: {e}")
+        emit("faces", {"faces": []})
+
+# ----------------- Routes -----------------
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/register")
+def register():
+    return render_template("register.html")
+
+# ----------------- Run -----------------
+if __name__ == "__main__":
+    socketio.run(app, host="127.0.0.1", port=5001, debug=True)

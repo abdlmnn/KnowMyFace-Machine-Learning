@@ -1,0 +1,11 @@
+opencv-python
+opencv-contrib-python
+numpy
+scipy
+pillow
+flask
+flask-socketio
+eventlet
+deepface
+tf-keras
+retina-face
