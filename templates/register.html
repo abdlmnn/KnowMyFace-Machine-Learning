@@ -1,67 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Register Face</title>
+    <title>Register Face - KnowMyFace</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/feather-icons"></script>
+
     <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      /* --- Global Resets & Body --- */
+      * {
         margin: 0;
         padding: 0;
-        background: #eceff1;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Roboto", Arial, sans-serif;
         color: #333;
-        text-align: center;
-      }
-
-      h1 {
-        margin-top: 20px;
-        font-weight: 700;
-        color: #222;
-      }
-
-      .bulletin {
-        max-width: 360px;
-        margin: 10px auto 20px auto;
-        background: #ffffff;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        text-align: left;
-        font-size: 14px;
-        line-height: 1.5;
-      }
-
-      .bulletin h3 {
-        margin: 0 0 6px 0;
-        font-size: 16px;
-        color: #1976d2;
-      }
-
-      .dashboard {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e0e8f0 100%);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        padding-bottom: 30px;
-        padding-top: 30px;
+        min-height: 100vh;
       }
 
+      /* --- Navbar (Unchanged) --- */
+      nav {
+        width: 100%;
+        background-color: white;
+        padding: 1rem 2rem;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        text-decoration: none;
+      }
+      .nav-menu {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+      }
+      .nav-link {
+        text-decoration: none;
+        color: #555;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        position: relative;
+        padding-bottom: 5px;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: #007bff;
+        transition: width 0.3s ease;
+      }
+      .nav-link:hover,
+      .nav-link.active {
+        color: #007bff;
+      }
+      .nav-link.active::after {
+        width: 100%;
+      }
+      .menu-toggle {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        cursor: pointer;
+      }
+      .menu-toggle span {
+        display: block;
+        width: 25px;
+        height: 3px;
+        background-color: #2c3e50;
+        border-radius: 3px;
+        transition: all 0.3s ease-in-out;
+      }
+
+      /* --- Main Content Layout --- */
+      main {
+        flex-grow: 1;
+        width: 100%;
+        padding: 3rem 1.5rem;
+      }
+      .main-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .dashboard-container {
+        display: flex;
+        flex-direction: row;
+        gap: 2rem;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .panel {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+      }
+      .register-panel {
+        flex-basis: 450px;
+        flex-shrink: 0;
+        text-align: center;
+      }
+      .info-panel {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        text-align: left;
+      }
+      .panel-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 1rem;
+        /* NEW: Flex for icon alignment */
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      /* NEW: Style for icons in titles */
+      .panel-title i {
+        stroke-width: 2.5px;
+        color: #007bff; /* Match icon color to theme */
+      }
+
+      .capture {
+        justify-content: center;
+      }
+
+      /* --- Video Container (W/H Unchanged) --- */
       .video-container {
         position: relative;
         width: 320px;
         height: 240px;
         border-radius: 10px;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin: 0 auto;
+        background: #111;
       }
-
       #video {
         width: 320px;
         height: 240px;
         display: block;
-        transform: scaleX(-1); /* selfie view */
+        transform: scaleX(-1);
       }
-
       #overlay {
         position: absolute;
         top: 0;
@@ -70,74 +182,269 @@
         height: 240px;
       }
 
-      .button-container {
+      /* --- Form Controls --- */
+      .form-controls {
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 1rem;
+        width: 320px;
+        margin: 1.5rem auto 0 auto;
       }
-
+      .back-control {
+        width: 320px;
+        margin: 1rem auto 0 auto;
+      }
       input[type="text"] {
-        margin-top: 10px;
-        padding: 8px 12px;
-        width: 200px;
-        font-size: 14px;
-        border-radius: 6px;
+        font-family: "Roboto", Arial, sans-serif;
+        font-size: 1rem;
+        padding: 0.9rem 1rem;
         border: 1px solid #ccc;
-        margin-bottom: 10px;
-        outline: none;
+        border-radius: 8px;
+        width: 100%;
+        transition: border-color 0.3s, box-shadow 0.3s;
       }
-
       input[type="text"]:focus {
-        border-color: #1976d2;
-        box-shadow: 0 0 3px rgba(25, 118, 210, 0.5);
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
       }
 
-      button {
-        padding: 10px 20px;
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 6px;
-        border: none;
-        background-color: #1976d2;
-        color: white;
-        transition: 0.3s;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-      }
-
-      button:hover {
-        background-color: #1565c0;
-      }
-
-      #status {
-        margin-top: 10px;
+      /* --- Button Styles --- */
+      .btn {
+        text-decoration: none;
+        font-family: "Roboto", Arial, sans-serif;
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
         font-weight: 500;
-        background: #ffffff;
-        padding: 6px 12px;
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        max-width: 320px;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+        width: 100%;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+        transform: translateY(-2px);
+      }
+      .btn-secondary {
+        background-color: transparent;
+        color: #555;
+        border-color: #ccc;
+      }
+      .btn-secondary:hover {
+        background-color: #f8f9fa;
+        color: #007bff;
+        border-color: #007bff;
+        transform: translateY(-2px);
+      }
+      .btn:disabled {
+        background-color: #aaa;
+        border-color: #aaa;
+        color: #f5f5f5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* --- UPDATED: Info/Status Boxes --- */
+      .info-box {
+        background-color: #e6f2ff; /* Light blue background */
+        border-left: 5px solid #007bff; /* Blue accent border */
+        padding: 1.5rem;
+        border-radius: 8px; /* Slightly softer radius */
+      }
+      .info-box .panel-title {
+        /* Style title within info box */
+        color: #0056b3; /* Darker blue title */
+        border-bottom-color: #b3d7ff; /* Lighter blue border */
+        margin-bottom: 1rem;
+      }
+      .info-box p,
+      .info-box ul {
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #333; /* Darker text for better contrast */
+      }
+      .info-box ul {
+        /* Style bullet points */
+        list-style-position: outside;
+        padding-left: 1.5rem;
+        margin-top: 0.5rem;
+      }
+      .info-box li {
+        margin-bottom: 0.3rem;
+      }
+
+      .status-box {
+        background-color: white; /* Keep status box white */
+      }
+      #status {
+        font-weight: 500;
+        padding: 1rem;
+        border-radius: 8px;
+        min-height: 1.5em;
+        line-height: 1.5;
+        color: #333;
+        font-size: 1rem;
+        background: #f4f4f4;
+      }
+      #status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      #status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      /* --- Footer --- */
+      footer {
+        margin-top: auto;
+        background-color: #2c3e50;
+        color: #e0e8f0;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        font-size: 0.9rem;
+      }
+      footer p {
+        margin: 0;
+      }
+
+      /* --- Responsive --- */
+      @media (max-width: 900px) {
+        .dashboard-container {
+          flex-direction: column;
+        }
+        .register-panel {
+          flex-basis: auto;
+        }
+      }
+      @media (max-width: 768px) {
+        .menu-toggle {
+          display: flex;
+        }
+        .nav-menu {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: absolute;
+          top: 65px;
+          right: 0;
+          width: 100%;
+          background-color: white;
+          box-shadow: 0 10px 10px rgba(0, 0, 0, 0.05);
+          transform: translateY(-150%);
+          opacity: 0;
+          transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .nav-menu.active {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        .nav-link {
+          width: 100%;
+          text-align: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .nav-link::after {
+          display: none;
+        }
+        .menu-toggle.active span:nth-child(1) {
+          transform: rotate(45deg) translate(5px, 6px);
+        }
+        .menu-toggle.active span:nth-child(2) {
+          opacity: 0;
+        }
+        .menu-toggle.active span:nth-child(3) {
+          transform: rotate(-45deg) translate(5px, -6px);
+        }
+      }
+      @media (max-width: 540px) {
+        .panel {
+          padding: 1.5rem;
+        }
+        main {
+          padding: 1.5rem 1rem;
+        }
+        .form-controls,
+        .back-control {
+          width: 100%;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>Register New Face</h1>
-
-    <div class="dashboard">
-      <div class="video-container">
-        <video id="video" autoplay></video>
-        <canvas id="overlay"></canvas>
+    <nav>
+      <a href="/" class="logo">KnowMyFace</a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/recognition" class="btn btn-primary">Recognize Now</a>
       </div>
-
-      <div id="status">Waiting to start registration</div>
-
-      <div class="button-container">
-        <input type="text" id="name" placeholder="Enter your name" />
-        <button id="startBtn">Start Registration</button>
-        <button style="margin-top: 7px" id="backBtn">Face Recognition</button>
+      <div class="menu-toggle" id="mobile-menu">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
-    </div>
+    </nav>
+
+    <main>
+      <div class="dashboard-container">
+        <div class="register-panel panel">
+          <h3 class="panel-title capture">Live Capture & Name</h3>
+          <div class="video-container">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="overlay"></canvas>
+          </div>
+          <div class="form-controls">
+            <input type="text" id="name" placeholder="Enter your full name" />
+            <button id="startBtn" class="btn btn-primary">
+              Start Registration
+            </button>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div class="info-box panel">
+            <h3 class="panel-title">How It Works</h3>
+            <ul>
+              <li>Enter your full name in the field provided.</li>
+              <li>Look directly into the camera.</li>
+              <li>Click "Start Registration".</li>
+              <li>The system will automatically capture 5 snapshots.</li>
+              <li>Wait for the confirmation status below.</li>
+            </ul>
+          </div>
+          <div class="status-box panel">
+            <h3 class="panel-title">Process Status</h3>
+            <div id="status">Waiting to start registration</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2025. All rights reserved. | @abdulmanan</p>
+    </footer>
 
     <script>
+      // --- Feather Icons Activation ---
+      feather.replace(); // Call this after the page loads to render icons
+
+      // --- Mobile Menu Toggle ---
+      const menuToggle = document.getElementById("mobile-menu");
+      const navMenu = document.getElementById("nav-menu");
+
+      menuToggle.addEventListener("click", () => {
+        menuToggle.classList.toggle("active");
+        navMenu.classList.toggle("active");
+      });
+
+      // --- Registration Script ---
       const video = document.getElementById("video");
       const overlay = document.getElementById("overlay");
       const ctx = overlay.getContext("2d");
@@ -168,14 +475,29 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const context = canvas.getContext("2d");
+
+        // Flip the image back to normal (un-mirrored)
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
         return canvas.toDataURL("image/jpeg");
       }
 
       // Draw live bounding box
       setInterval(() => {
         if (video.videoWidth && video.videoHeight) {
-          socket.emit("frame", { image: captureFrame() });
+          // Send an un-mirrored frame for detection
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const context = canvas.getContext("2d");
+          context.translate(canvas.width, 0);
+          context.scale(-1, 1);
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const frame = canvas.toDataURL("image/jpeg");
+
+          socket.emit("frame", { image: frame });
         }
       }, 100);
 
@@ -186,8 +508,8 @@
           const scaleY = overlay.height / video.videoHeight;
 
           data.faces.forEach((f) => {
-            // Flip X for mirrored video
-            const x = overlay.width - (f.x + f.w) * scaleX;
+            // This is the correct logic from our last step
+            const x = f.x * scaleX;
             const y = f.y * scaleY;
             const w = f.w * scaleX;
             const h = f.h * scaleY;
@@ -218,8 +540,12 @@
         }
         currentName = name;
 
+        startBtn.disabled = true;
+        backBtn.disabled = true;
+
         snapshots = [];
         status.textContent = "📸 Capturing 5 snapshots...";
+        status.className = ""; // Reset class
 
         for (let i = 0; i < 5; i++) {
           snapshots.push(captureFrame());
@@ -236,16 +562,30 @@
           .then((res) => res.json())
           .then((data) => {
             status.textContent = data.message;
+            if (
+              data.message.includes("success") ||
+              data.message.includes("Registered")
+            ) {
+              status.className = "success";
+            } else {
+              status.className = "error";
+            }
           })
           .catch((err) => {
             console.error(err);
             status.textContent = "❌ Error registering face";
+            status.className = "error";
+          })
+          .finally(() => {
+            startBtn.disabled = false;
+            backBtn.disabled = false;
+            currentName = ""; // Reset name after attempt
           });
       }
 
       startBtn.addEventListener("click", registerFace);
       backBtn.addEventListener("click", () => {
-        window.location.href = "/"; // Back to main recognition page
+        window.location.href = "/recognition";
       });
     </script>
   </body>

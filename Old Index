@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Face Recognition Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <style>
+      /* General */
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #eceff1; /* soft light gray */
+        color: #333;
+      }
+
+      h1 {
+        text-align: center;
+        margin: 20px 0;
+        font-weight: 700;
+        color: #222;
+      }
+
+      .dashboard {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding-bottom: 30px;
+        padding-top: 30px;
+      }
+
+      .video-container {
+        position: relative;
+        width: 320px;
+        height: 240px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      #video {
+        width: 320px;
+        height: 240px;
+        display: block;
+        transform: scaleX(-1); /* selfie view */
+      }
+
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 320px;
+        height: 240px;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 6px;
+        border: none;
+        background-color: #1976d2;
+        color: white;
+        transition: 0.3s;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      button:hover {
+        background-color: #1565c0;
+      }
+
+      .status-panel {
+        margin-top: 10px;
+        font-size: 16px;
+        font-weight: 500;
+        background: #ffffff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Face Recognition</h1>
+
+    <div class="dashboard">
+      <div class="video-container">
+        <video id="video" autoplay></video>
+        <canvas id="overlay"></canvas>
+      </div>
+
+      <div class="status-panel">
+        Faces Detected: <span id="face-count">0</span>
+      </div>
+
+      <div class="controls">
+        <button onclick="location.href='/register'">Go to Register</button>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+      const video = document.getElementById("video");
+      const overlay = document.getElementById("overlay");
+      const ctx = overlay.getContext("2d");
+      const faceCountEl = document.getElementById("face-count");
+
+      // Get user camera
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 320, height: 240 } })
+        .then((stream) => (video.srcObject = stream))
+        .catch((err) => console.error(err));
+
+      // Match canvas size
+      video.addEventListener("loadedmetadata", () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+      });
+
+      // Capture frame
+      function captureFrame() {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const c = canvas.getContext("2d");
+        c.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg");
+      }
+
+      // Send frames to server
+      setInterval(() => {
+        if (video.videoWidth && video.videoHeight) {
+          socket.emit("frame", { image: captureFrame() });
+        }
+      }, 100);
+
+      // Draw faces and update count
+      socket.on("faces", (data) => {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        if (data.faces) {
+          faceCountEl.innerText = data.faces.length;
+          const scaleX = overlay.width / video.videoWidth;
+          const scaleY = overlay.height / video.videoHeight;
+
+          data.faces.forEach((f) => {
+            // Flip X for mirrored video
+            const x = overlay.width - (f.x + f.w) * scaleX;
+            const y = f.y * scaleY;
+            const w = f.w * scaleX;
+            const h = f.h * scaleY;
+            const isUnknown = f.name === "Unknown";
+
+            ctx.strokeStyle = isUnknown ? "red" : "#4caf50";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+
+            let label = f.name;
+            if (f.confidence !== undefined) {
+              label += ` (${(f.confidence * 100).toFixed(1)}%)`;
+            }
+
+            ctx.fillStyle = isUnknown
+              ? "rgba(255,0,0,0.25)"
+              : "rgba(76,175,80,0.25)";
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillRect(x, y - 20, textWidth + 6, 18);
+
+            ctx.fillStyle = "black";
+            ctx.font = "14px Arial";
+            ctx.fillText(label, x + 3, y - 5);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

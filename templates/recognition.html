@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Live Recognition - KnowMyFace</title>
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* --- Global Resets & Body --- */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Roboto", Arial, sans-serif;
+        color: #333;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e0e8f0 100%);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      /* --- Navbar (Unchanged) --- */
+      nav {
+        width: 100%;
+        background-color: white;
+        padding: 1rem 2rem;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        text-decoration: none;
+      }
+      .nav-menu {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+      }
+      .nav-link {
+        text-decoration: none;
+        color: #555;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        position: relative;
+        padding-bottom: 5px;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: #007bff;
+        transition: width 0.3s ease;
+      }
+      .nav-link:hover {
+        color: #007bff;
+      }
+      .nav-link:hover::after {
+        width: 100%;
+      }
+      .menu-toggle {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        cursor: pointer;
+      }
+      .menu-toggle span {
+        display: block;
+        width: 25px;
+        height: 3px;
+        background-color: #2c3e50;
+        border-radius: 3px;
+        transition: all 0.3s ease-in-out;
+      }
+
+      /* Base button style */
+      .btn {
+        text-decoration: none;
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+      }
+
+      /* UPDATED: Primary Button Style & Hover */
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+        /* Hides this specific button on mobile */
+        display: none;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3;
+        /* IMPROVED "lift" effect */
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+      }
+
+      .btn-secondary {
+        background-color: transparent;
+        color: #007bff;
+        border-color: #007bff;
+      }
+
+      .btn-secondary:hover {
+        background-color: #007bff;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      /* --- UPDATED: Main Content Layout --- */
+      main {
+        flex-grow: 1;
+        width: 100%;
+        padding: 3rem 1.5rem;
+      }
+
+      /* NEW: Dashboard Container */
+      .dashboard-container {
+        display: flex;
+        flex-direction: row; /* Side-by-side layout */
+        gap: 2rem;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      /* NEW: Video Panel (Left Side) */
+      .video-panel {
+        flex-basis: 450px; /* Set a base width */
+        flex-shrink: 0;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 2.5rem;
+        text-align: center;
+      }
+
+      .video-panel h1 {
+        font-size: 2.25rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 2rem;
+      }
+
+      /* NEW: Info Panel (Right Side) */
+      .info-panel {
+        flex-grow: 1; /* Takes up remaining space */
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .panel-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 1rem;
+        /* NEW: Flex for icon alignment */
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .capture {
+        justify-content: center;
+      }
+
+      /* Video Container (W/H Unchanged) */
+      .video-container {
+        position: relative;
+        width: 320px;
+        height: 240px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin: 0 auto;
+        background: #111;
+      }
+      .video-live-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(255, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .video-live-badge::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        background: white;
+        border-radius: 50%;
+        animation: blink 1.5s infinite;
+      }
+      @keyframes blink {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      #video {
+        width: 320px;
+        height: 240px;
+        display: block;
+        transform: scaleX(-1);
+      }
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 320px;
+        height: 240px;
+      }
+
+      /* UPDATED: Status/Log Panel Styling */
+      .status-panel,
+      .log-panel {
+        background: #ffffff; /* White background */
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        text-align: left;
+      }
+      .log-panel {
+        flex-grow: 1; /* Log panel takes more space if needed */
+        min-height: 150px;
+      }
+      .status-panel h3,
+      .log-panel h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.75rem;
+      }
+      #live-status {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #007bff;
+      }
+      #face-count {
+        font-size: 1rem;
+        color: #555;
+        margin-top: 0.5rem;
+        display: block;
+      }
+      #recognition-log {
+        list-style-type: none;
+        padding: 0;
+        font-size: 1.1rem;
+        color: #333;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      #recognition-log li {
+        padding: 4px 0;
+      }
+      .log-empty {
+        color: #888;
+        font-style: italic;
+        font-size: 1rem;
+      }
+
+      /* Controls (Unchanged) */
+      .controls {
+        margin-top: 2rem;
+      }
+      .btn {
+        text-decoration: none;
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+      }
+      .btn-secondary {
+        background-color: transparent;
+        color: #007bff;
+        border-color: #007bff;
+      }
+      .btn-secondary:hover {
+        background-color: #007bff;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      /* --- Footer (Unchanged) --- */
+      footer {
+        margin-top: auto;
+        background-color: #2c3e50;
+        color: #e0e8f0;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        font-size: 0.9rem;
+      }
+      footer p {
+        margin: 0;
+      }
+
+      /* --- Responsive --- */
+      @media (max-width: 900px) {
+        /* Stack the panels on smaller screens */
+        .dashboard-container {
+          flex-direction: column;
+        }
+        .video-panel {
+          flex-basis: auto; /* Reset base width */
+        }
+      }
+
+      @media (max-width: 768px) {
+        .menu-toggle {
+          display: flex;
+        }
+        .nav-menu {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: absolute;
+          top: 65px;
+          right: 0;
+          width: 100%;
+          background-color: white;
+          box-shadow: 0 10px 10px rgba(0, 0, 0, 0.05);
+          transform: translateY(-150%);
+          opacity: 0;
+          transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .nav-menu.active {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        .nav-link {
+          width: 100%;
+          text-align: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .nav-link::after {
+          display: none;
+        }
+        .menu-toggle.active span:nth-child(1) {
+          transform: rotate(45deg) translate(5px, 6px);
+        }
+        .menu-toggle.active span:nth-child(2) {
+          opacity: 0;
+        }
+        .menu-toggle.active span:nth-child(3) {
+          transform: rotate(-45deg) translate(5px, -6px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/" class="logo">KnowMyFace</a>
+      <div class="nav-menu" id="nav-menu">
+        <a href="/register" class="btn btn-primary">Register Face</a>
+      </div>
+      <div class="menu-toggle" id="mobile-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </nav>
+
+    <main>
+      <div class="dashboard-container">
+        <div class="video-panel">
+          <h3 class="panel-title capture">Live Monitor</h3>
+          <div class="video-container">
+            <div class="video-live-badge">LIVE</div>
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="overlay"></canvas>
+          </div>
+          <div class="controls">
+            <a href="/" class="btn btn-secondary">Back to Home</a>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div class="status-panel">
+            <h3>Live Status</h3>
+            <div id="live-status">Initializing...</div>
+            <div id="face-count">Faces Detected: 0</div>
+          </div>
+          <div class="log-panel">
+            <h3>Recognition Log</h3>
+            <ul id="recognition-log">
+              <li class="log-empty">No faces recognized.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2025. All rights reserved. | @abdulmanan</p>
+    </footer>
+
+    <script>
+      // --- Mobile Menu Toggle ---
+      const menuToggle = document.getElementById("mobile-menu");
+      const navMenu = document.getElementById("nav-menu");
+
+      menuToggle.addEventListener("click", () => {
+        menuToggle.classList.toggle("active");
+        navMenu.classList.toggle("active");
+      });
+
+      // --- Recognition Script (Unchanged) ---
+      const socket = io();
+      const video = document.getElementById("video");
+      const overlay = document.getElementById("overlay");
+      const ctx = overlay.getContext("2d");
+      const faceCountEl = document.getElementById("face-count");
+      const liveStatusEl = document.getElementById("live-status");
+      const logEl = document.getElementById("recognition-log");
+
+      navigator.mediaDevices
+        .getUserMedia({ video: { width: 320, height: 240 } })
+        .then((stream) => {
+          video.srcObject = stream;
+          liveStatusEl.textContent = "Scanning...";
+        })
+        .catch((err) => {
+          console.error(err);
+          liveStatusEl.textContent = "Camera Error";
+          liveStatusEl.style.color = "red";
+        });
+
+      video.addEventListener("loadedmetadata", () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+      });
+
+      function captureFrame() {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const c = canvas.getContext("2d");
+        c.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg");
+      }
+
+      setInterval(() => {
+        if (video.videoWidth && video.videoHeight) {
+          socket.emit("frame", { image: captureFrame() });
+        }
+      }, 100);
+
+      socket.on("faces", (data) => {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        if (data.faces) {
+          const faceCount = data.faces.length;
+          faceCountEl.textContent = `Faces Detected: ${faceCount}`;
+          const recognizedNames = data.faces
+            .map((f) => f.name)
+            .filter((name) => name !== "Unknown");
+          const uniqueNames = [...new Set(recognizedNames)];
+
+          if (faceCount === 0) {
+            liveStatusEl.textContent = "Scanning...";
+            liveStatusEl.style.color = "#007bff";
+          } else if (uniqueNames.length > 0) {
+            liveStatusEl.textContent = "Face Recognized";
+            liveStatusEl.style.color = "#4caf50";
+          } else {
+            liveStatusEl.textContent = "Detecting...";
+            liveStatusEl.style.color = "#E67E22";
+          }
+
+          if (uniqueNames.length > 0) {
+            logEl.innerHTML = "";
+            uniqueNames.forEach((name) => {
+              const li = document.createElement("li");
+              li.textContent = name;
+              logEl.appendChild(li);
+            });
+          } else {
+            logEl.innerHTML = '<li class="log-empty">No faces recognized.</li>';
+          }
+
+          const scaleX = overlay.width / video.videoWidth;
+          const scaleY = overlay.height / video.videoHeight;
+
+          data.faces.forEach((f) => {
+            const x = overlay.width - (f.x + f.w) * scaleX;
+            const y = f.y * scaleY;
+            const w = f.w * scaleX;
+            const h = f.h * scaleY;
+            const isUnknown = f.name === "Unknown";
+            ctx.strokeStyle = isUnknown ? "red" : "#4caf50";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+            let label = f.name;
+            if (f.confidence !== undefined) {
+              label += ` (${(f.confidence * 100).toFixed(1)}%)`;
+            }
+            ctx.fillStyle = isUnknown
+              ? "rgba(255,0,0,0.25)"
+              : "rgba(76,175,80,0.25)";
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillRect(x, y - 20, textWidth + 6, 18);
+            ctx.fillStyle = "black";
+            ctx.font = "14px Arial";
+            ctx.fillText(label, x + 3, y - 5);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

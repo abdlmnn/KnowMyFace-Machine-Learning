@@ -1,181 +1,576 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Face Recognition Dashboard</title>
-    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veriface - Professional Face Recognition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-      /* General */
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      /* --- Global Resets & Body --- */
+      * {
         margin: 0;
         padding: 0;
-        background: #eceff1; /* soft light gray */
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Roboto", Arial, sans-serif;
         color: #333;
-      }
-
-      h1 {
-        text-align: center;
-        margin: 20px 0;
-        font-weight: 700;
-        color: #222;
-      }
-
-      .dashboard {
+        background: #fdfdfd;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        padding-bottom: 30px;
-        padding-top: 30px;
+        min-height: 100vh;
       }
 
-      .video-container {
-        position: relative;
-        width: 320px;
-        height: 240px;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-
-      #video {
-        width: 320px;
-        height: 240px;
-        display: block;
-        transform: scaleX(-1); /* selfie view */
-      }
-
-      #overlay {
-        position: absolute;
+      /* --- UPDATED: Navigation Bar --- */
+      nav {
+        width: 100%;
+        background-color: white;
+        padding: 1rem 2rem;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        position: sticky;
         top: 0;
-        left: 0;
-        width: 320px;
-        height: 240px;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
-      .controls {
+      .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        text-decoration: none;
+      }
+
+      /* NEW: Nav Menu Container */
+      .nav-menu {
+        display: flex;
+        align-items: center;
+        gap: 2rem; /* Spacing between links on desktop */
+      }
+
+      .nav-link {
+        text-decoration: none;
+        color: #555;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        position: relative;
+        padding-bottom: 5px; /* Space for underline */
+      }
+
+      /* NEW: Underline hover effect for links */
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: #007bff;
+        transition: width 0.3s ease;
+      }
+
+      .nav-link:hover {
+        color: #007bff;
+      }
+
+      .nav-link:hover::after {
+        width: 100%;
+      }
+
+      /* Base button style */
+      .btn {
+        text-decoration: none;
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+      }
+
+      /* UPDATED: Primary Button Style & Hover */
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+        /* Hides this specific button on mobile */
+        display: none;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3;
+        /* IMPROVED "lift" effect */
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+      }
+
+      .btn-secondary {
+        background-color: transparent;
+        color: #007bff;
+        border-color: #007bff;
+      }
+
+      .btn-secondary:hover {
+        background-color: #007bff;
+        color: white;
+        transform: translateY(-2px);
+      }
+
+      /* NEW: Hamburger Menu Icon */
+      .menu-toggle {
+        display: none; /* Hidden on desktop */
+        flex-direction: column;
+        gap: 5px;
+        cursor: pointer;
+      }
+
+      .menu-toggle span {
+        display: block;
+        width: 25px;
+        height: 3px;
+        background-color: #2c3e50;
+        border-radius: 3px;
+        transition: all 0.3s ease-in-out;
+      }
+
+      /* --- Hero Section (Unchanged) --- */
+      main {
+        flex-grow: 1;
+      }
+      .hero-section {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 5rem 2rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e0e8f0 100%);
+        width: 100%;
+      }
+      .hero-text-content {
+        flex: 1;
+        min-width: 300px;
+        text-align: left;
+        animation: fadeInFromLeft 0.8s ease-out;
+      }
+      .hero-text-content h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        line-height: 1.2;
+      }
+      .hero-text-content p {
+        font-size: 1.25rem;
+        color: #555;
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+      }
+      .button-group {
+        display: flex;
+        justify-content: flex-start;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      /* This rule shows the hero button, but keeps nav button hidden */
+      .hero-text-content .btn-primary {
+        display: inline-block;
+      }
+      .hero-visual-content {
+        flex: 1;
+        min-width: 300px;
         display: flex;
         justify-content: center;
-        gap: 10px;
+        align-items: center;
+        animation: fadeInFromRight 0.8s ease-out 0.2s;
+        animation-fill-mode: backwards;
+      }
+      .hero-visual-content svg {
+        width: 100%;
+        max-width: 450px;
+        height: auto;
+      }
+      @keyframes fadeInFromLeft {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes fadeInFromRight {
+        from {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
       }
 
-      button {
-        padding: 10px 20px;
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 6px;
-        border: none;
-        background-color: #1976d2;
-        color: white;
-        transition: 0.3s;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      /* --- Features Section (Unchanged) --- */
+      .features-section {
+        padding: 5rem 1.5rem;
+        background-color: #ffffff;
+        text-align: center;
       }
-
-      button:hover {
-        background-color: #1565c0;
+      .features-section h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 4rem;
       }
-
-      .status-panel {
-        margin-top: 10px;
-        font-size: 16px;
+      .card-container {
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.07);
+        padding: 2.5rem;
+        text-align: center;
+        flex-basis: 340px;
+        flex-grow: 1;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+      }
+      .card-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background-color: #e6f2ff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto 1.5rem auto;
+      }
+      .card-icon svg {
+        width: 32px;
+        height: 32px;
+        color: #007bff;
+      }
+      .card h3 {
+        font-size: 1.5rem;
         font-weight: 500;
-        background: #ffffff;
-        padding: 6px 12px;
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        color: #2c3e50;
+        margin-bottom: 1rem;
+      }
+      .card p {
+        font-size: 1rem;
+        color: #555;
+        line-height: 1.6;
+      }
+
+      /* --- Footer (Unchanged) --- */
+      footer {
+        margin-top: auto;
+        background-color: #2c3e50;
+        color: #e0e8f0;
+        text-align: center;
+        padding: 2rem 1.5rem;
+        font-size: 0.9rem;
+      }
+      footer p {
+        margin: 0;
+      }
+
+      /* --- UPDATED: Responsive Design --- */
+      @media (min-width: 769px) {
+        /* Show desktop nav CTA button */
+        .nav-menu .btn-primary {
+          display: inline-block;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .hero-section {
+          flex-direction: column-reverse;
+          padding: 3rem 1.5rem;
+        }
+        .hero-text-content {
+          text-align: center;
+        }
+        .hero-text-content h1 {
+          font-size: 2.5rem;
+        }
+        .hero-text-content p {
+          font-size: 1.125rem;
+        }
+        .button-group {
+          justify-content: center;
+        }
+        .features-section h2 {
+          font-size: 1.75rem;
+        }
+
+        /* NEW: Mobile Menu Styles */
+        .menu-toggle {
+          display: flex; /* Show hamburger icon */
+        }
+
+        .nav-menu {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: absolute;
+          top: 65px; /* Height of the navbar */
+          right: 0;
+          width: 100%;
+          background-color: white;
+          box-shadow: 0 10px 10px rgba(0, 0, 0, 0.05);
+
+          /* Hide menu off-screen */
+          transform: translateY(-150%);
+          opacity: 0;
+          transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        .nav-menu.active {
+          transform: translateY(0); /* Show menu */
+          opacity: 1;
+        }
+
+        .nav-link {
+          width: 100%;
+          text-align: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .nav-link::after {
+          display: none; /* Remove underline effect on mobile */
+        }
+
+        /* Show the primary button inside the mobile menu */
+        .nav-menu .btn-primary {
+          display: block;
+          width: 90%;
+          margin: 1rem 0;
+          text-align: center;
+        }
+
+        /* Animate hamburger icon to 'X' */
+        .menu-toggle.active span:nth-child(1) {
+          transform: rotate(45deg) translate(5px, 6px);
+        }
+        .menu-toggle.active span:nth-child(2) {
+          opacity: 0;
+        }
+        .menu-toggle.active span:nth-child(3) {
+          transform: rotate(-45deg) translate(5px, -6px);
+        }
+      }
+
+      @media (max-width: 600px) {
+        .hero-text-content h1 {
+          font-size: 2.25rem;
+        }
+        .hero-text-content p {
+          font-size: 1rem;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>Face Recognition</h1>
+    <nav>
+      <a href="/" class="logo">KnowMyFace</a>
 
-    <div class="dashboard">
-      <div class="video-container">
-        <video id="video" autoplay></video>
-        <canvas id="overlay"></canvas>
+      <div class="nav-menu" id="nav-menu">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="/register" class="nav-link">Register</a>
+        <a href="/recognition" class="btn btn-primary">Recognize Now</a>
       </div>
 
-      <div class="status-panel">
-        Faces Detected: <span id="face-count">0</span>
+      <div class="menu-toggle" id="mobile-menu">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
+    </nav>
 
-      <div class="controls">
-        <button onclick="location.href='/register'">Go to Register</button>
-      </div>
-    </div>
+    <main>
+      <section class="hero-section">
+        <div class="hero-text-content">
+          <h1>Unlock Your World with a Glance</h1>
+          <p>
+            Our cutting-edge AI provides seamless and secure identification.
+            Register in seconds, get recognized in milliseconds.
+          </p>
+          <div class="button-group">
+            <a href="/register" class="btn btn-primary">Register Face</a>
+            <a href="/" class="btn btn-secondary">Recognize Now</a>
+          </div>
+        </div>
+        <div class="hero-visual-content">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w.org/2000/svg">
+            <defs>
+              <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop
+                  offset="0%"
+                  style="stop-color: #007bff; stop-opacity: 1"
+                />
+                <stop
+                  offset="100%"
+                  style="stop-color: #0056b3; stop-opacity: 1"
+                />
+              </linearGradient>
+            </defs>
+            <path
+              fill="url(#grad1)"
+              d="M 100, 100 m -75, 0 a 75,75 0 1,0 150,0 a 75,75 0 1,0 -150,0"
+            />
+            <path
+              fill="#FFFFFF"
+              opacity="0.1"
+              d="M 100, 100 m -60, 0 a 60,60 0 1,0 120,0 a 60,60 0 1,0 -120,0"
+            />
+            <path
+              stroke="#FFFFFF"
+              stroke-width="2"
+              fill="none"
+              opacity="0.3"
+              d="M 100, 100 m -50, 0 a 50,50 0 1,0 120,0 a 50,50 0 1,0 -120,0"
+              transform="rotate(45 100 100)"
+            />
+            <path
+              d="M100 130 C 80 130, 70 115, 70 100 C 70 85, 80 70, 100 70 C 120 70, 130 85, 130 100 C 130 115, 120 130, 100 130 Z"
+              fill="#FFFFFF"
+              opacity="0.9"
+            />
+            <circle cx="88" cy="95" r="4" fill="#2c3e50" />
+            <circle cx="112" cy="95" r="4" fill="#2c3e50" />
+            <path
+              d="M 90 112 Q 100 118, 110 112"
+              stroke="#2c3e50"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <line
+              x1="60"
+              y1="100"
+              x2="140"
+              y2="100"
+              stroke="#FFFFFF"
+              stroke-width="2.5"
+              opacity="1"
+            />
+          </svg>
+        </div>
+      </section>
+
+      <section class="features-section" id="features">
+        <h2>How It Works</h2>
+        <div class="card-container">
+          <div class="card">
+            <div class="card-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <h3>Step 1: Secure Registration</h3>
+            <p>
+              Snap or upload a single photo. Our AI instantly analyzes your
+              unique facial features and creates a secure, encrypted biometric
+              profile in seconds.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+                <line x1="12" y1="2" x2="12" y2="6"></line>
+                <line x1="12" y1="18" x2="12" y2="22"></line>
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+              </svg>
+            </div>
+            <h3>Step 2: Instant Recognition</h3>
+            <p>
+              Point your camera or upload an image. Our system performs millions
+              of comparisons in a fraction of a second to find an instant,
+              accurate match.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <polyline points="9 12 11 14 15 10"></polyline>
+              </svg>
+            </div>
+            <h3>Step 3: Total Privacy</h3>
+            <p>
+              Built with privacy-first principles, all biometric data is
+              protected with end-to-end encryption. You are always in control of
+              your data.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025. All rights reserved. | @abdulmanan</p>
+    </footer>
 
     <script>
-      const socket = io();
-      const video = document.getElementById("video");
-      const overlay = document.getElementById("overlay");
-      const ctx = overlay.getContext("2d");
-      const faceCountEl = document.getElementById("face-count");
+      const menuToggle = document.getElementById("mobile-menu");
+      const navMenu = document.getElementById("nav-menu");
 
-      // Get user camera
-      navigator.mediaDevices
-        .getUserMedia({ video: { width: 320, height: 240 } })
-        .then((stream) => (video.srcObject = stream))
-        .catch((err) => console.error(err));
-
-      // Match canvas size
-      video.addEventListener("loadedmetadata", () => {
-        overlay.width = video.videoWidth;
-        overlay.height = video.videoHeight;
-      });
-
-      // Capture frame
-      function captureFrame() {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const c = canvas.getContext("2d");
-        c.drawImage(video, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL("image/jpeg");
-      }
-
-      // Send frames to server
-      setInterval(() => {
-        if (video.videoWidth && video.videoHeight) {
-          socket.emit("frame", { image: captureFrame() });
-        }
-      }, 100);
-
-      // Draw faces and update count
-      socket.on("faces", (data) => {
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-        if (data.faces) {
-          faceCountEl.innerText = data.faces.length;
-          const scaleX = overlay.width / video.videoWidth;
-          const scaleY = overlay.height / video.videoHeight;
-
-          data.faces.forEach((f) => {
-            // Flip X for mirrored video
-            const x = overlay.width - (f.x + f.w) * scaleX;
-            const y = f.y * scaleY;
-            const w = f.w * scaleX;
-            const h = f.h * scaleY;
-            const isUnknown = f.name === "Unknown";
-
-            ctx.strokeStyle = isUnknown ? "red" : "#4caf50";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, w, h);
-
-            let label = f.name;
-            if (f.confidence !== undefined) {
-              label += ` (${(f.confidence * 100).toFixed(1)}%)`;
-            }
-
-            ctx.fillStyle = isUnknown
-              ? "rgba(255,0,0,0.25)"
-              : "rgba(76,175,80,0.25)";
-            const textWidth = ctx.measureText(label).width;
-            ctx.fillRect(x, y - 20, textWidth + 6, 18);
-
-            ctx.fillStyle = "black";
-            ctx.font = "14px Arial";
-            ctx.fillText(label, x + 3, y - 5);
-          });
-        }
+      menuToggle.addEventListener("click", () => {
+        // Toggle the 'active' class on both the icon and the menu
+        menuToggle.classList.toggle("active");
+        navMenu.classList.toggle("active");
       });
     </script>
   </body>

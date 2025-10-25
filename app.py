@@ -277,6 +277,10 @@ def index():
 def register():
     return render_template("register.html")
 
+@app.route("/recognition")
+def recognition():
+    return render_template("recognition.html")
+
 # ----------------- Run -----------------
 if __name__ == "__main__":
     socketio.run(app, host="127.0.0.1", port=5001, debug=True)
