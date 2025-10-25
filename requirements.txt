@@ -9,3 +9,4 @@ eventlet
 deepface
 tf-keras
 retina-face
+scikit-learn
